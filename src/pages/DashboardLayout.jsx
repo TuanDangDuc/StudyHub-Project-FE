@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { LogOut, User, BookOpen } from 'lucide-react';
+import { LogOut, User, BookOpen, FileText, Cloud } from 'lucide-react'; 
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
@@ -28,6 +28,15 @@ export default function DashboardLayout() {
                 <User size={18} /> Hồ sơ cá nhân
               </Link>
               
+              <Link to="/documents" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary transition-colors">
+      <FileText size={18} /> Tài liệu
+    </Link>
+              
+              <Link to="/storage" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary">
+   <Cloud size={18} /> Lưu trữ
+</Link>
+
+
               <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
                 <LogOut size={18} /> Đăng xuất
               </button>

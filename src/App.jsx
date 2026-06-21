@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import PrivateRoute from './components/PrivateRoute';
 import AuthPage from './pages/AuthPage';
 import DashboardLayout from './pages/DashboardLayout';
 import ProfilePage from './pages/ProfilePage';
@@ -10,29 +12,39 @@ import AdminPage from './pages/AdminPage';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Trang đăng nhập chung */}
-        <Route path="/login" element={<AuthPage />} />
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<AuthPage />} />
 
-        {/* KHOẢNG TRỜI RIÊNG CỦA ADMIN */}
-        <Route path="/admin" element={<AdminPage />} />
+          <Route
+            path="/admin"
+            element={
+              <PrivateRoute>
+                <AdminPage />
+              </PrivateRoute>
+            }
+          />
 
+          <Route path="/" element={<DashboardLayout />}>
+            <Route index element={<HomePage />} />
+            <Route path="documents" element={<DocumentPage />} />
+            <Route path="storage" element={<CloudStoragePage />} />
+            <Route path="chat" element={<ChatPage />} />
+            <Route
+              path="profile"
+              element={
+                <PrivateRoute>
+                  <ProfilePage />
+                </PrivateRoute>
+              }
+            />
+          </Route>
 
-        {/* Khu vực yêu cầu đăng nhập (Private) */}
-        <Route path="/" element={<DashboardLayout />}>
-  <Route index element={<HomePage />} /> {/* Màn hình mặc định lấp chỗ trống */}
-  <Route path="profile" element={<ProfilePage />} />
-  <Route path="documents" element={<DocumentPage />} />
-  <Route path="storage" element={<CloudStoragePage />} />
-  <Route path="chat" element={<ChatPage />} /> {/* Thêm AI Chat */}
-</Route>
-      
-
-        {/* Bắt lỗi đường dẫn linh tinh */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </BrowserRouter>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

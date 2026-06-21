@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Folder, File, X, HardDrive, Search, Eye, Upload, Loader2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/useAuth';
 
 export default function CloudStoragePage() {
   const navigate = useNavigate();
@@ -10,6 +11,18 @@ export default function CloudStoragePage() {
   const [items, setItems] = useState([
     { id: 2, name: 'Tài liệu.pdf', type: 'file', date: '2026-06-05' },
   ]);
+
+  const { user } = useAuth();
+  const location = useLocation();
+
+  const requireAuth = () => {
+    if (!user) {
+      alert('Vui lòng đăng nhập để thực hiện tính năng này!');
+      navigate('/login', { state: { from: location } });
+      return false;
+    }
+    return true;
+  };
 
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -57,7 +70,7 @@ export default function CloudStoragePage() {
         </div>
       </div>
 
-      <button onClick={() => fileInputRef.current.click()} className="mb-6 flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl hover:bg-primary-hover">
+      <button onClick={() => requireAuth() && fileInputRef.current.click()} className="mb-6 flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl hover:bg-primary-hover">
         <Upload size={18} /> Tải file lên
       </button>
       <input type="file" ref={fileInputRef} onChange={handleUpload} className="hidden" />
@@ -71,7 +84,7 @@ export default function CloudStoragePage() {
             <p className="text-sm text-gray-700 truncate">{item.name}</p>
             
             {item.type === 'file' && (
-               <button onClick={() => setPreviewFile(item)} className="mt-2 text-primary hover:underline text-xs flex items-center justify-center gap-1">
+               <button onClick={() => requireAuth() && setPreviewFile(item)} className="mt-2 text-primary hover:underline text-xs flex items-center justify-center gap-1">
                  <Eye size={12} /> Xem trước
                </button>
             )}

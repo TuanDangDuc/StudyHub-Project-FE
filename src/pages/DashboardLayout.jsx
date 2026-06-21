@@ -1,13 +1,26 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { LogOut, User, BookOpen, FileText, Cloud, MessageSquare } from 'lucide-react'; // Import thêm MessageSquare
+import { LogOut, User, BookOpen, FileText, Cloud, MessageSquare, ChevronDown } from 'lucide-react';
+import { useAuth } from '../context/useAuth';
+
 export default function DashboardLayout() {
   const navigate = useNavigate();
+  const { user, userId, isAuthenticated, logout } = useAuth();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleLogout = () => {
-    // 1. Xóa token
-    localStorage.removeItem('token');
-    // 2. Đẩy về trang đăng nhập
+    logout();
     navigate('/login');
   };
 
@@ -17,38 +30,91 @@ export default function DashboardLayout() {
       <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex items-center gap-2">
+            <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity" style={{ cursor: 'pointer' }}>
               <BookOpen className="text-primary" size={28} />
               <span className="text-xl font-bold text-gray-800">AI Study Hub</span>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <Link to="/profile" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary transition-colors">
-                <User size={18} /> Hồ sơ cá nhân
-              </Link>
-              
-              <Link to="/documents" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary transition-colors">
-      <FileText size={18} /> Tài liệu
-    </Link>
-              
-              <Link to="/storage" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary">
-   <Cloud size={18} /> Lưu trữ
-</Link>
+            </Link>
 
-               {/* Link Trợ lý AI */}
-  <Link to="/chat" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary transition-colors">
-    <MessageSquare size={18} /> Trợ lý AI
-  </Link>
-               
-              <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
-                <LogOut size={18} /> Đăng xuất
-              </button>
+            <div className="flex items-center gap-4">
+              {isAuthenticated ? (
+                <>
+                  <Link to="/documents" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary transition-colors" style={{ cursor: 'pointer' }}>
+                    <FileText size={18} /> <span className="hidden sm:inline">Tài liệu</span>
+                  </Link>
+
+                  <Link to="/storage" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary transition-colors" style={{ cursor: 'pointer' }}>
+                    <Cloud size={18} /> <span className="hidden sm:inline">Lưu trữ</span>
+                  </Link>
+
+                  <Link to="/chat" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary transition-colors" style={{ cursor: 'pointer' }}>
+                    <MessageSquare size={18} /> <span className="hidden sm:inline">Trợ lý AI</span>
+                  </Link>
+
+                  {/* Dropdown User */}
+                  <div className="relative ml-2" ref={dropdownRef}>
+                    <button
+                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                      className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
+                    >
+                      {user?.avatarUrl ? (
+                        <img src={user.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover border border-gray-200" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                          <User size={18} />
+                        </div>
+                      )}
+                      <span className="hidden sm:inline text-sm font-semibold text-gray-800">
+                        {user?.fullname || userId || 'Hồ sơ cá nhân'}
+                      </span>
+                      <ChevronDown size={16} className={`text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isDropdownOpen && (
+                      <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-fade-in origin-top-right">
+                        <Link
+                          to="/profile"
+                          onClick={() => setIsDropdownOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <User size={18} className="text-gray-400" /> Thông tin cá nhân
+                        </Link>
+                        <hr className="my-1 border-gray-100" />
+                        <button
+                          onClick={() => {
+                            setIsDropdownOpen(false);
+                            handleLogout();
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors text-left"
+                        >
+                          <LogOut size={18} className="text-red-500" /> Đăng xuất
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="px-4 py-2 text-sm font-medium text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
+                  >
+                    Đăng nhập
+                  </Link>
+                  <Link
+                    to="/login"
+                    state={{ isRegister: true }}
+                    className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors shadow-sm shadow-primary/30"
+                  >
+                    Đăng ký
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Khu vực hiển thị nội dung các trang con (Profile, Danh sách tài liệu...) */}
+      {/* Khu vực hiển thị nội dung các trang con */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <Outlet />
       </main>

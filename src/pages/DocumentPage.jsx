@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 // Đã gộp và xóa dòng import bị trùng lặp
 import { Search, Upload, FileText, Trash2, Download, X, Edit, Eye, Save } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/useAuth';
 
 const SUBJECTS = ['Tất cả', 'Lập trình di động', 'Cơ sở dữ liệu', 'IoT', 'Kiến trúc phần mềm'];
 
@@ -14,6 +15,18 @@ export default function DocumentPage() {
     { id: 1, name: 'Tài liệu ôn thi cuối kỳ.pdf', size: '2.4 MB', date: '2026-06-05', subject: 'Lập trình di động' },
     { id: 2, name: 'Báo cáo dự án IoT.docx', size: '1.1 MB', date: '2026-06-06', subject: 'IoT' },
   ]);
+
+  const { user } = useAuth();
+  const location = useLocation();
+
+  const requireAuth = (action) => {
+    if (!user) {
+      alert('Vui lòng đăng nhập để thực hiện tính năng này!');
+      navigate('/login', { state: { from: location } });
+      return false;
+    }
+    return true;
+  };
 
   const [searchTerm, setSearchTerm] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('Tất cả');
@@ -40,7 +53,7 @@ export default function DocumentPage() {
 
       <div className="flex justify-between items-center mb-6 pr-12">
         <h1 className="text-2xl font-bold text-gray-800">Quản lý tài liệu</h1>
-        <button onClick={() => fileInputRef.current.click()} className="flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-xl transition-all shadow-lg">
+        <button onClick={() => requireAuth() && fileInputRef.current.click()} className="flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-xl transition-all shadow-lg">
           <Upload size={18} /> Tải tài liệu lên
         </button>
         <input type="file" ref={fileInputRef} className="hidden" />
@@ -75,14 +88,14 @@ export default function DocumentPage() {
                 
                 {/* Đã thêm nút Tải xuống vào cụm Thao tác */}
                 <td className="px-6 py-4 flex justify-end gap-2">
-                  <button onClick={() => setEditingDoc(doc)} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Xem chi tiết"><Eye size={18} /></button>
+                  <button onClick={() => requireAuth() && setEditingDoc(doc)} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Xem chi tiết"><Eye size={18} /></button>
                   
-                  <button className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Tải xuống tài liệu">
+                  <button onClick={() => requireAuth()} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Tải xuống tài liệu">
                     <Download size={18} />
                   </button>
                   
-                  <button onClick={() => setEditingDoc(doc)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Chỉnh sửa"><Edit size={18} /></button>
-                  <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Xóa tài liệu"><Trash2 size={18} /></button>
+                  <button onClick={() => requireAuth() && setEditingDoc(doc)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Chỉnh sửa"><Edit size={18} /></button>
+                  <button onClick={() => requireAuth()} className="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Xóa tài liệu"><Trash2 size={18} /></button>
                 </td>
               </tr>
             ))}

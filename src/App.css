@@ -182,3 +182,9 @@
     border-right-color: var(--border);
   }
 }
+
+/* Global pointer for interactables */
+button, a, [role="button"] {
+  cursor: pointer !important;
+}
+

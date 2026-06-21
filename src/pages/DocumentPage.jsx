@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+// Đã gộp và xóa dòng import bị trùng lặp
 import { Search, Upload, FileText, Trash2, Download, X, Edit, Eye, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -71,10 +72,17 @@ export default function DocumentPage() {
               <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4 flex items-center gap-3"><FileText className="text-primary" size={20} /> {doc.name}</td>
                 <td className="px-6 py-4 text-gray-600">{doc.subject}</td>
-                <td className="px-6 py-4 text-right flex justify-end gap-2">
-                  <button onClick={() => setEditingDoc(doc)} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"><Eye size={18} /></button>
-                  <button onClick={() => setEditingDoc(doc)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit size={18} /></button>
-                  <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={18} /></button>
+                
+                {/* Đã thêm nút Tải xuống vào cụm Thao tác */}
+                <td className="px-6 py-4 flex justify-end gap-2">
+                  <button onClick={() => setEditingDoc(doc)} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Xem chi tiết"><Eye size={18} /></button>
+                  
+                  <button className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Tải xuống tài liệu">
+                    <Download size={18} />
+                  </button>
+                  
+                  <button onClick={() => setEditingDoc(doc)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Chỉnh sửa"><Edit size={18} /></button>
+                  <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Xóa tài liệu"><Trash2 size={18} /></button>
                 </td>
               </tr>
             ))}

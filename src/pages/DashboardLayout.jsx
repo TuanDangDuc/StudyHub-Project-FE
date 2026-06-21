@@ -1,7 +1,6 @@
 import React from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { LogOut, User, BookOpen, FileText, Cloud } from 'lucide-react'; 
-
+import { LogOut, User, BookOpen, FileText, Cloud, MessageSquare } from 'lucide-react'; // Import thêm MessageSquare
 export default function DashboardLayout() {
   const navigate = useNavigate();
 
@@ -36,7 +35,11 @@ export default function DashboardLayout() {
    <Cloud size={18} /> Lưu trữ
 </Link>
 
-
+               {/* Link Trợ lý AI */}
+  <Link to="/chat" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary transition-colors">
+    <MessageSquare size={18} /> Trợ lý AI
+  </Link>
+               
               <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
                 <LogOut size={18} /> Đăng xuất
               </button>

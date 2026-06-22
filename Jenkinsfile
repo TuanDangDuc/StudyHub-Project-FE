@@ -28,8 +28,6 @@ pipeline {
       }
     }
 
-  
-
   }
   post {
     success {

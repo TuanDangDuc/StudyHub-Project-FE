@@ -28,14 +28,7 @@ pipeline {
       }
     }
 
-    stage('trigger deploy') {
-      steps {
-        script {
-          build job: 'Deploy', wait: false
-        }
-
-      }
-    }
+  
 
   }
   post {

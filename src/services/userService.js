@@ -4,7 +4,7 @@ import { isTokenExpired } from '../utils/jwtUtils';
 const PUBLIC_URLS = ['/api/user/login', '/api/user/register', '/api/user/forgot-password', '/api/user/verify-otp', '/api/user/reset-password'];
 
 const apiClient = axios.create({
-  baseURL: 'https://api.anhchuno.id.vn',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://api.anhchuno.id.vn',
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -75,11 +75,8 @@ export const updateUserInfo = async (id, info) => {
 export const getUserInfo = async (id) => {
   try {
     const response = await apiClient.get(`/api/user/get-info/${id}`);
-    fetch('http://localhost:9999', { method: 'POST', body: JSON.stringify({ type: 'success', data: response.data }) }).catch(() => {});
     return response.data;
   } catch (error) {
-    const token = localStorage.getItem('token');
-    fetch('http://localhost:9999', { method: 'POST', body: JSON.stringify({ type: 'error', id, tokenPrefix: token?.substring(0, 15), status: error.response?.status, data: error.response?.data }) }).catch(() => {});
     throw error;
   }
 };

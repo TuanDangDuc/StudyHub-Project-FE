@@ -122,7 +122,6 @@ export default function AuthPage() {
         let uid = null;
         try {
           const payload = JSON.parse(atob(token.split('.')[1]));
-          fetch('http://localhost:9999', { method: 'POST', body: JSON.stringify({ type: 'jwt_payload', data: payload }) }).catch(() => {});
           uid = payload.sub || payload.userId || payload.id || formData.username;
         } catch {
           uid = formData.username; // Fallback an toàn nếu token không phải dạng JWT chuẩn

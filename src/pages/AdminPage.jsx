@@ -6,16 +6,8 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getAllUsers, deleteUser } from '../services/userService';
+import { getAllDocuments, deleteDocument } from '../services/documentService'; // CHÚ Ý: Đảm bảo bạn đã export 2 hàm này trong documentService
 import { useAuth } from '../context/useAuth';
-
-// ──────────────────────────────────────────────────────
-// Dữ liệu mẫu Tài liệu (vẫn giữ mock – chờ Document API)
-// ──────────────────────────────────────────────────────
-const MOCK_DOCUMENTS = [
-  { id: 'd1', title: 'Tài liệu ôn thi Giải tích', fileName: 'giai_tich_1.pdf', fileSize: '2.4 MB', uploadAt: '21/06/2026', userId: null, userName: '?', downloadCount: 156 },
-  { id: 'd2', title: 'Đề cương Cơ sở dữ liệu', fileName: 'db_decuong.docx', fileSize: '1.1 MB', uploadAt: '20/06/2026', userId: null, userName: '?', downloadCount: 45 },
-  { id: 'd3', title: 'Hướng dẫn sử dụng AI', fileName: 'ai_guide.pdf', fileSize: '5.5 MB', uploadAt: '18/06/2026', userId: null, userName: '?', downloadCount: 141 },
-];
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -25,85 +17,115 @@ export default function AdminPage() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // ── User state từ API ──
+  // ── States từ API ──
   const [users, setUsers] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [usersLoading, setUsersLoading] = useState(true);
-  const [usersError, setUsersError] = useState('');
+  const [docsLoading, setDocsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
   const [deletingId, setDeletingId] = useState(null);
 
-  // ── Fetch users ──
-  const fetchUsers = useCallback(async () => {
+  // ── Fetch Dữ liệu thật ──
+  const fetchData = useCallback(async () => {
     setUsersLoading(true);
-    setUsersError('');
+    setDocsLoading(true);
+    setErrorMsg('');
     try {
-      const data = await getAllUsers();
-      setUsers(Array.isArray(data) ? data : []);
+      // Chạy song song 2 API cho nhanh
+      const [usersData, docsData] = await Promise.all([
+        getAllUsers(),
+        getAllDocuments()
+      ]);
+      setUsers(Array.isArray(usersData) ? usersData : []);
+      setDocuments(Array.isArray(docsData) ? docsData : []);
     } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data || 'Không thể tải danh sách người dùng.';
-      setUsersError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      const msg = err.response?.data?.message || err.response?.data || 'Không thể tải dữ liệu hệ thống.';
+      setErrorMsg(typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
       setUsersLoading(false);
+      setDocsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchUsers(); // eslint-disable-line react-hooks/set-state-in-effect
-  }, [fetchUsers]);
+    fetchData(); 
+  }, [fetchData]);
 
-
-  // ── Delete user ──
+  // ── Thao tác Xóa ──
   const handleDeleteUser = async (userId) => {
     if (!window.confirm('Bạn có chắc muốn xóa người dùng này?')) return;
     setDeletingId(userId);
     try {
       await deleteUser(userId);
-      setUsers((prev) => prev.filter((u) => u.id !== userId && String(u.id) !== String(userId)));
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
     } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data || 'Xóa thất bại.';
-      alert(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      alert('Xóa thất bại.');
     } finally {
       setDeletingId(null);
     }
   };
 
-  // ── Logout ──
+  const handleDeleteDocument = async (docId) => {
+    if (!window.confirm('Bạn có chắc muốn xóa tài liệu này khỏi hệ thống?')) return;
+    setDeletingId(docId);
+    try {
+      await deleteDocument(docId);
+      setDocuments((prev) => prev.filter((d) => d.id !== docId));
+    } catch (err) {
+      alert('Xóa file thất bại.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  // ── Filter ──
-  const filteredUsers = users.filter(
-    (u) =>
-      (u.fullname || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+  // ── Lọc dữ liệu theo Search ──
+  const filteredUsers = users.filter((u) =>
+    (u.fullname || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredStorageDocs = MOCK_DOCUMENTS.filter(
-    (d) =>
-      d.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      d.userName.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredStorageDocs = documents.filter((d) =>
+    (d.fileName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (d.user?.fullname || 'Unknown').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // ── Document stats per user (mock) ──
-  const userDocumentStats = users
-    .map((user) => {
-      const uid = String(user.id);
-      const userDocs = MOCK_DOCUMENTS.filter((d) => String(d.userId) === uid);
-      const totalDownloads = userDocs.reduce((sum, doc) => sum + (doc.downloadCount || 0), 0);
-      return { ...user, totalFiles: userDocs.length, totalDownloads };
-    })
-    .filter((u) => u.totalFiles > 0);
+  // ── Thống kê Document theo User ──
+  const userDocumentStats = users.map((user) => {
+    const userDocs = documents.filter((d) => d.user?.id === user.id);
+    const totalDownloads = userDocs.reduce((sum, doc) => sum + (doc.downloadCount || 0), 0);
+    return { ...user, totalFiles: userDocs.length, totalDownloads };
+  }).filter((u) => u.totalFiles > 0);
 
-  const filteredUserStats = userDocumentStats.filter(
-    (u) =>
-      (u.fullname || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredUserStats = userDocumentStats.filter((u) =>
+    (u.fullname || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const userSpecificDocs = selectedUser
-    ? MOCK_DOCUMENTS.filter((d) => String(d.userId) === String(selectedUser.id))
+    ? documents.filter((d) => d.user?.id === selectedUser.id)
     : [];
+
+  // ── Tính toán dung lượng thật ──
+  const totalStorageBytes = documents.reduce((sum, doc) => {
+    return sum + (doc.fileSize ? parseInt(doc.fileSize) : 0);
+  }, 0);
+  const totalStorageGB = (totalStorageBytes / (1024 * 1024 * 1024)).toFixed(2);
+  const storagePercent = Math.min((totalStorageGB / 500) * 100, 100).toFixed(1);
+
+  // Hàm format bytes hiển thị
+  const formatBytes = (bytesStr) => {
+    const bytes = parseInt(bytesStr) || 0;
+    if (bytes === 0) return '0 MB';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col relative">
@@ -133,7 +155,7 @@ export default function AdminPage() {
           <p className="text-gray-600">Quản lý tài khoản người dùng, giám sát tài liệu và theo dõi hoạt động toàn nền tảng.</p>
         </div>
 
-        {/* ── STATS CARDS ── */}
+        {/* ── STATS CARDS (DỮ LIỆU THẬT) ── */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-all border-l-4 border-l-blue-500">
             <div className="p-4 bg-blue-50 text-blue-600 rounded-xl"><Users size={24} /></div>
@@ -146,14 +168,14 @@ export default function AdminPage() {
             <div className="p-4 bg-emerald-50 text-emerald-600 rounded-xl"><FileText size={24} /></div>
             <div>
               <p className="text-sm text-gray-500 font-medium">Tài liệu hệ thống</p>
-              <p className="text-2xl font-bold text-gray-800">{MOCK_DOCUMENTS.length}</p>
+              <p className="text-2xl font-bold text-gray-800">{docsLoading ? '...' : documents.length}</p>
             </div>
           </div>
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-all border-l-4 border-l-amber-500">
             <div className="p-4 bg-amber-50 text-amber-600 rounded-xl"><Database size={24} /></div>
             <div>
               <p className="text-sm text-gray-500 font-medium">Storage Đã dùng</p>
-              <p className="text-2xl font-bold text-gray-800">124 GB</p>
+              <p className="text-2xl font-bold text-gray-800">{docsLoading ? '...' : `${totalStorageGB} GB`}</p>
             </div>
           </div>
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-all border-l-4 border-l-purple-500">
@@ -161,7 +183,7 @@ export default function AdminPage() {
             <div>
               <p className="text-sm text-gray-500 font-medium">Lượt tải tài liệu</p>
               <p className="text-2xl font-bold text-gray-800">
-                {MOCK_DOCUMENTS.reduce((s, d) => s + d.downloadCount, 0)}
+                {docsLoading ? '...' : documents.reduce((s, d) => s + (d.downloadCount || 0), 0)}
               </p>
             </div>
           </div>
@@ -174,7 +196,7 @@ export default function AdminPage() {
             {[
               { key: 'users', icon: <Users size={18} />, label: 'Danh sách Người dùng' },
               { key: 'documents', icon: <FolderOpen size={18} />, label: 'Quản lý Tài liệu' },
-              { key: 'storage', icon: <HardDrive size={18} />, label: 'Quản lý Storage' },
+              { key: 'storage', icon: <HardDrive size={18} />, label: 'Quản lý Azure Storage' }, // Đã đổi tên thành Azure
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -193,8 +215,8 @@ export default function AdminPage() {
           {/* SEARCH + REFRESH */}
           <div className="p-6 flex justify-between items-center bg-white border-b border-gray-50">
             <button
-              onClick={fetchUsers}
-              disabled={usersLoading}
+              onClick={fetchData}
+              disabled={usersLoading || docsLoading}
               className="flex items-center gap-1 text-sm text-gray-500 hover:text-purple-600 transition-colors disabled:opacity-50"
             >
               <RefreshCw size={15} className={usersLoading ? 'animate-spin' : ''} />
@@ -218,21 +240,19 @@ export default function AdminPage() {
             </div>
           </div>
 
+          {/* HIỂN THỊ LỖI CHUNG (NẾU CÓ) */}
+          {errorMsg && (
+             <div className="m-6 p-4 bg-red-50 text-red-600 rounded-xl border border-red-200 flex items-center gap-3">
+               <AlertCircle size={20} />
+               <span>{errorMsg}</span>
+             </div>
+          )}
+
           {/* ── TAB 1: USERS ── */}
-          {activeTab === 'users' && (
+          {activeTab === 'users' && !errorMsg && (
             <div className="overflow-x-auto">
               {usersLoading ? (
-                <div className="flex items-center justify-center py-16 text-gray-400 gap-3">
-                  <RefreshCw size={22} className="animate-spin" /> Đang tải dữ liệu...
-                </div>
-              ) : usersError ? (
-                <div className="flex flex-col items-center justify-center py-16 text-red-500 gap-3">
-                  <AlertCircle size={32} />
-                  <p className="font-medium">{usersError}</p>
-                  <button onClick={fetchUsers} className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm transition-colors">
-                    Thử lại
-                  </button>
-                </div>
+                <div className="flex justify-center py-12"><RefreshCw className="animate-spin text-gray-400" /></div>
               ) : (
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-gray-50/80 text-gray-600 text-sm">
@@ -245,14 +265,10 @@ export default function AdminPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-100 text-sm">
                     {filteredUsers.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="px-6 py-12 text-center text-gray-400">
-                          Không tìm thấy người dùng nào.
-                        </td>
-                      </tr>
+                      <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-400">Không tìm thấy người dùng.</td></tr>
                     ) : (
                       filteredUsers.map((user) => (
-                        <tr key={user.id || user.email} className="hover:bg-gray-50 transition-colors">
+                        <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               {user.avatarUrl ? (
@@ -270,11 +286,14 @@ export default function AdminPage() {
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex gap-1 flex-wrap">
-                              {(user.role || []).map((r) => (
-                                <span key={r} className={`px-2 py-1 rounded-md text-xs font-medium ${r === 'ADMIN' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'}`}>
-                                  {r}
-                                </span>
-                              ))}
+                              {(user.role || []).map((r) => {
+                                const roleName = r.authority || r; // Hỗ trợ cả 2 chuẩn dữ liệu
+                                return (
+                                  <span key={roleName} className={`px-2 py-1 rounded-md text-xs font-medium ${roleName.includes('ADMIN') ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'}`}>
+                                    {roleName.replace('ROLE_', '')}
+                                  </span>
+                                )
+                              })}
                             </div>
                           </td>
                           <td className="px-6 py-4">
@@ -290,11 +309,7 @@ export default function AdminPage() {
                               className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                               title="Xóa tài khoản"
                             >
-                              {deletingId === user.id ? (
-                                <RefreshCw size={16} className="animate-spin" />
-                              ) : (
-                                <Trash2 size={16} />
-                              )}
+                              {deletingId === user.id ? <RefreshCw size={16} className="animate-spin" /> : <Trash2 size={16} />}
                             </button>
                           </td>
                         </tr>
@@ -306,119 +321,127 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* ── TAB 2: DOCUMENTS (mock) ── */}
-          {activeTab === 'documents' && (
+          {/* ── TAB 2: DOCUMENTS THỐNG KÊ ── */}
+          {activeTab === 'documents' && !errorMsg && (
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-gray-50/80 text-gray-600 text-sm">
-                  <tr>
-                    <th className="px-6 py-4 font-medium">Người dùng</th>
-                    <th className="px-6 py-4 font-medium">Đã tải lên</th>
-                    <th className="px-6 py-4 font-medium">Tổng lượt tải</th>
-                    <th className="px-6 py-4 font-medium text-right">Chi tiết</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 text-sm">
-                  {filteredUserStats.length === 0 ? (
+              {docsLoading ? (
+                 <div className="flex justify-center py-12"><RefreshCw className="animate-spin text-gray-400" /></div>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-gray-50/80 text-gray-600 text-sm">
                     <tr>
-                      <td colSpan={4} className="px-6 py-12 text-center text-gray-400">
-                        Chưa có dữ liệu tài liệu.
-                      </td>
+                      <th className="px-6 py-4 font-medium">Người dùng</th>
+                      <th className="px-6 py-4 font-medium">Đã tải lên</th>
+                      <th className="px-6 py-4 font-medium">Tổng lượt tải</th>
+                      <th className="px-6 py-4 font-medium text-right">Chi tiết</th>
                     </tr>
-                  ) : (
-                    filteredUserStats.map((userStat) => (
-                      <tr key={userStat.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="font-medium text-gray-800">{userStat.fullname}</div>
-                          <div className="text-gray-500 text-xs">{userStat.email}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-semibold">
-                            {userStat.totalFiles} file
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 font-bold text-purple-600">{userStat.totalDownloads}</td>
-                        <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => setSelectedUser(userStat)}
-                            className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors text-xs font-medium ml-auto"
-                          >
-                            <FolderOpen size={14} /> Xem danh sách
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-sm">
+                    {filteredUserStats.length === 0 ? (
+                      <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-400">Chưa có người dùng nào upload tài liệu.</td></tr>
+                    ) : (
+                      filteredUserStats.map((userStat) => (
+                        <tr key={userStat.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="font-medium text-gray-800">{userStat.fullname}</div>
+                            <div className="text-gray-500 text-xs">{userStat.email}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-semibold">
+                              {userStat.totalFiles} file
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 font-bold text-purple-600">{userStat.totalDownloads}</td>
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              onClick={() => setSelectedUser(userStat)}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors text-xs font-medium ml-auto"
+                            >
+                              <FolderOpen size={14} /> Xem danh sách
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              )}
             </div>
           )}
 
-          {/* ── TAB 3: STORAGE (mock) ── */}
-          {activeTab === 'storage' && (
+          {/* ── TAB 3: STORAGE THẬT ── */}
+          {activeTab === 'storage' && !errorMsg && (
             <div className="animate-fade-in">
-              <div className="p-6 border-b border-gray-100 bg-amber-50/30">
+              <div className="p-6 border-b border-gray-100 bg-blue-50/30">
                 <div className="flex justify-between items-end mb-2">
                   <div>
                     <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                      <Database size={18} className="text-amber-600" /> Dung lượng Firebase Storage
+                      <Database size={18} className="text-blue-600" /> Dung lượng Azure Storage
                     </h3>
-                    <p className="text-sm text-gray-500 mt-1">Đã dùng 124 GB trong tổng số 500 GB (Gói hiện tại)</p>
+                    <p className="text-sm text-gray-500 mt-1">Đã dùng {totalStorageGB} GB trong tổng số 500 GB (Gói Admin)</p>
                   </div>
-                  <span className="text-2xl font-bold text-amber-600">24.8%</span>
+                  <span className="text-2xl font-bold text-blue-600">{storagePercent}%</span>
                 </div>
                 <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden mt-3">
-                  <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: '24.8%' }} />
+                  <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${storagePercent}%` }} />
                 </div>
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead className="bg-gray-50/80 text-gray-600 text-sm">
-                    <tr>
-                      <th className="px-6 py-4 font-medium">Tên File (Trên Server)</th>
-                      <th className="px-6 py-4 font-medium">Người tải lên</th>
-                      <th className="px-6 py-4 font-medium">Kích thước</th>
-                      <th className="px-6 py-4 font-medium">Cảnh báo</th>
-                      <th className="px-6 py-4 font-medium text-right">Dọn dẹp</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 text-sm">
-                    {filteredStorageDocs.map((doc) => (
-                      <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="font-medium text-gray-800">{doc.fileName}</div>
-                          <div className="text-gray-500 text-xs">ID: {doc.id}_ts{doc.uploadAt.replace(/\//g, '')}</div>
-                        </td>
-                        <td className="px-6 py-4 text-gray-600">{doc.userName}</td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2 py-1 rounded-md text-xs font-bold ${parseFloat(doc.fileSize) > 5 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
-                            {doc.fileSize}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          {parseFloat(doc.fileSize) > 5 && (
-                            <span className="flex items-center gap-1 text-xs text-red-600 font-medium">
-                              <AlertTriangle size={14} /> File lớn
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <button className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors text-xs font-medium ml-auto">
-                            <Trash2 size={14} /> Xóa file
-                          </button>
-                        </td>
+                {docsLoading ? (
+                   <div className="flex justify-center py-12"><RefreshCw className="animate-spin text-gray-400" /></div>
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-gray-50/80 text-gray-600 text-sm">
+                      <tr>
+                        <th className="px-6 py-4 font-medium">Tên File (Trên Server)</th>
+                        <th className="px-6 py-4 font-medium">Người tải lên</th>
+                        <th className="px-6 py-4 font-medium">Kích thước</th>
+                        <th className="px-6 py-4 font-medium text-right">Dọn dẹp</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-sm">
+                      {filteredStorageDocs.length === 0 ? (
+                         <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-400">Kho lưu trữ trống.</td></tr>
+                      ) : (
+                        filteredStorageDocs.map((doc) => {
+                          const sizeNum = parseInt(doc.fileSize) || 0;
+                          const isLarge = sizeNum > (5 * 1024 * 1024); // > 5MB
+                          return (
+                          <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-4">
+                              <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="font-medium text-blue-600 hover:underline">{doc.fileName}</a>
+                              <div className="text-gray-400 text-xs mt-1">Tải lên: {new Date(doc.uploadAt).toLocaleDateString()}</div>
+                            </td>
+                            <td className="px-6 py-4 text-gray-600">{doc.user?.fullname || 'Ẩn danh'}</td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1 w-max ${isLarge ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
+                                {isLarge && <AlertTriangle size={12} />}
+                                {formatBytes(doc.fileSize)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <button 
+                                onClick={() => handleDeleteDocument(doc.id)}
+                                disabled={deletingId === doc.id}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors text-xs font-medium ml-auto disabled:opacity-50"
+                              >
+                                {deletingId === doc.id ? <RefreshCw size={14} className="animate-spin" /> : <Trash2 size={14} />} Xóa file
+                              </button>
+                            </td>
+                          </tr>
+                        )})
+                      )}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           )}
         </div>
       </main>
 
-      {/* ── MODAL: XEM TÀI LIỆU CỦA USER ── */}
+      {/* ── MODAL: XEM TÀI LIỆU CỦA USER THẬT ── */}
       {selectedUser && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col overflow-hidden">
@@ -444,15 +467,21 @@ export default function AdminPage() {
                       <div className="flex items-center gap-4">
                         <div className="p-3 bg-blue-50 text-blue-600 rounded-lg"><FileText size={20} /></div>
                         <div>
-                          <p className="font-medium text-gray-800">{doc.title}</p>
-                          <p className="text-xs text-gray-500">{doc.fileName} • {doc.fileSize} • Tải lên: {doc.uploadAt}</p>
+                          <p className="font-medium text-gray-800">{doc.title || doc.fileName}</p>
+                          <p className="text-xs text-gray-500">{doc.fileName} • {formatBytes(doc.fileSize)} • Tải lên: {new Date(doc.uploadAt).toLocaleDateString()}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
-                        <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-md">{doc.downloadCount} lượt tải</span>
+                        <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-md">{doc.downloadCount || 0} lượt tải</span>
                         <div className="w-px h-6 bg-gray-200" />
-                        <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Tải xuống"><Download size={16} /></button>
-                        <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Xóa tài liệu"><Trash2 size={16} /></button>
+                        <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Tải xuống"><Download size={16} /></a>
+                        <button 
+                          onClick={() => {
+                             handleDeleteDocument(doc.id);
+                             setSelectedUser(null); // Đóng modal khi xóa
+                          }} 
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Xóa tài liệu"><Trash2 size={16} />
+                        </button>
                       </div>
                     </div>
                   ))}

@@ -4,7 +4,7 @@ import { isTokenExpired } from '../utils/jwtUtils';
 const PUBLIC_URLS = ['/api/user/login', '/api/user/register', '/api/user/forgot-password', '/api/user/verify-otp', '/api/user/reset-password'];
 
 const apiClient = axios.create({
-  baseURL: 'https//api.anhchuno.id.vn',
+  baseURL: 'https://api.anhchuno.id.vn',
   headers: { 'Content-Type': 'application/json' },
 });
 

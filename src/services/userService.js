@@ -83,6 +83,14 @@ export const deleteUser = async (id) => {
   await apiClient.delete(`/api/user/${id}`);
 };
 
+export const changeUserStatus = async (id, status) => {
+  await apiClient.patch(`/api/user/change-status/${id}`, null, { params: { status } });
+};
+
+export const changeUserRole = async (id, role) => {
+  await apiClient.patch(`/api/user/change-role/${id}`, null, { params: { role } });
+};
+
 export const forgotPassword = async (email, requestId) => {
   const response = await apiClient.post('/api/user/forgot-password', null, {
     params: { email, requestId },

@@ -127,9 +127,20 @@ export default function AuthPage() {
           uid = formData.username; // Fallback an toàn nếu token không phải dạng JWT chuẩn
         }
 
-        await loginSuccess(token, uid, formData.username);
-        // Quay lại trang gốc nếu bị redirect từ PrivateRoute
-        navigate(fromPath, { replace: true });
+        const userInfo = await loginSuccess(token, uid, formData.username);
+        
+        // Chuyển hướng theo role
+        const roleName = typeof userInfo?.role === 'string' ? userInfo.role : (userInfo?.role?.authority || 'USER');
+        const displayRole = roleName.replace('ROLE_', '');
+
+        if (displayRole === 'ADMIN') {
+          navigate('/admin', { replace: true });
+        } else {
+          // Quay lại trang gốc nếu bị redirect từ PrivateRoute
+          // Nếu fromPath là /admin nhưng user không phải ADMIN, đổi thành /
+          const targetPath = fromPath === '/admin' ? '/' : fromPath;
+          navigate(targetPath, { replace: true });
+        }
       }
 
       else if (view === 'register') {

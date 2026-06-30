@@ -7,7 +7,7 @@ import { useAuth } from '../context/useAuth';
  * để sau khi login có thể quay lại đúng trang.
  */
 export default function PrivateRoute({ children }) {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   const location = useLocation();
 
   // Đang khởi tạo (load token từ localStorage) → chờ
@@ -37,6 +37,14 @@ export default function PrivateRoute({ children }) {
   // Chưa đăng nhập hoặc token hết hạn → về login
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // Nếu đang truy cập vào /admin nhưng không phải ADMIN
+  if (location.pathname === '/admin') {
+    const roleName = typeof user?.role === 'string' ? user.role : (user?.role?.authority || 'USER');
+    if (!roleName.includes('ADMIN')) {
+      return <Navigate to="/" replace />;
+    }
   }
 
   return children;

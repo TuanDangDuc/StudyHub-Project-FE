@@ -136,11 +136,16 @@ export function AuthProvider({ children }) {
           localStorage.setItem('userId', userInfo.id);
           setUserId(userInfo.id);
         }
+        return userInfo;
       } else {
-        setUser({ fullname: 'Người dùng' });
+        const fallback = { fullname: 'Người dùng' };
+        setUser(fallback);
+        return fallback;
       }
     } catch {
-      setUser({ fullname: uid || 'Người dùng' });
+      const fallback = { fullname: uid || 'Người dùng' };
+      setUser(fallback);
+      return fallback;
     }
   }, []);
 

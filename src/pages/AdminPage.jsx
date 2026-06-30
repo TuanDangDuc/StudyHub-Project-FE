@@ -5,7 +5,7 @@ import {
   RefreshCw, AlertCircle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getAllUsers, deleteUser } from '../services/userService';
+import { getAllUsers, deleteUser, changeUserRole, changeUserStatus } from '../services/userService';
 import { getAllDocuments, deleteDocument } from '../services/documentService'; // CHÚ Ý: Đảm bảo bạn đã export 2 hàm này trong documentService
 import { useAuth } from '../context/useAuth';
 
@@ -31,16 +31,25 @@ export default function AdminPage() {
     setDocsLoading(true);
     setErrorMsg('');
     try {
-      // Chạy song song 2 API cho nhanh
-      const [usersData, docsData] = await Promise.all([
-        getAllUsers(),
-        getAllDocuments()
-      ]);
-      setUsers(Array.isArray(usersData) ? usersData : []);
-      setDocuments(Array.isArray(docsData) ? docsData : []);
-    } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data || 'Không thể tải dữ liệu hệ thống.';
-      setErrorMsg(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      let usersData = [];
+      let docsData = [];
+      
+      try {
+        usersData = await getAllUsers();
+      } catch (err) {
+        console.error("Lỗi lấy danh sách người dùng:", err);
+        setErrorMsg((prev) => (prev ? prev + ' | ' : '') + 'Lỗi lấy người dùng: ' + (err.response?.status || err.message));
+      }
+
+      try {
+        docsData = await getAllDocuments();
+      } catch (err) {
+        console.error("Lỗi lấy danh sách tài liệu:", err);
+        setErrorMsg((prev) => (prev ? prev + ' | ' : '') + 'Lỗi lấy tài liệu: ' + (err.response?.status || err.message));
+      }
+
+      setUsers(Array.isArray(usersData) ? usersData : (usersData?.data || []));
+      setDocuments(Array.isArray(docsData) ? docsData : (docsData?.data || []));
     } finally {
       setUsersLoading(false);
       setDocsLoading(false);
@@ -62,6 +71,28 @@ export default function AdminPage() {
       alert('Xóa thất bại.');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleChangeRole = async (userId, newRole) => {
+    try {
+      await changeUserRole(userId, newRole);
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+      );
+    } catch (err) {
+      alert('Đổi quyền thất bại.');
+    }
+  };
+
+  const handleChangeStatus = async (userId, newStatus) => {
+    try {
+      await changeUserStatus(userId, newStatus);
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, accountStatus: newStatus } : u))
+      );
+    } catch (err) {
+      alert('Đổi trạng thái thất bại.');
     }
   };
 
@@ -285,22 +316,30 @@ export default function AdminPage() {
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <div className="flex gap-1 flex-wrap">
-                              {(user.role || []).map((r) => {
-                                const roleName = r.authority || r; // Hỗ trợ cả 2 chuẩn dữ liệu
-                                return (
-                                   <span key={roleName} className={`px-2 py-1 rounded-md text-xs font-medium ${roleName.includes('ADMIN') ? 'bg-purple-100 text-purple-800' : 'bg-indigo-50 text-indigo-700'}`}>
-                                    {roleName.replace('ROLE_', '')}
-                                  </span>
-                                )
-                              })}
-                            </div>
+                            {(() => {
+                              const roleName = typeof user.role === 'string' ? user.role : (user.role?.authority || 'USER');
+                              const displayRole = roleName.replace('ROLE_', '');
+                              return (
+                                <select
+                                  value={displayRole}
+                                  onChange={(e) => handleChangeRole(user.id, e.target.value)}
+                                  className={`px-2 py-1 rounded-md text-xs font-medium cursor-pointer outline-none border border-transparent hover:border-gray-300 appearance-none text-center ${displayRole === 'ADMIN' ? 'bg-purple-100 text-purple-800' : 'bg-indigo-50 text-indigo-700'}`}
+                                >
+                                  <option value="ADMIN" className="bg-white text-charcoal font-medium">ADMIN</option>
+                                  <option value="USER" className="bg-white text-charcoal font-medium">USER</option>
+                                </select>
+                              );
+                            })()}
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`flex items-center gap-1 w-max px-2 py-1 rounded-md text-xs font-medium ${user.accountStatus === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                              {user.accountStatus === 'ACTIVE' ? <UserCheck size={14} /> : <UserX size={14} />}
-                              {user.accountStatus === 'ACTIVE' ? 'Hoạt động' : 'Đã khóa'}
-                            </span>
+                            <select
+                              value={user.accountStatus === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE'}
+                              onChange={(e) => handleChangeStatus(user.id, e.target.value)}
+                              className={`flex items-center gap-1 w-max px-2 py-1 rounded-md text-xs font-medium cursor-pointer outline-none border border-transparent hover:border-gray-300 appearance-none text-center ${user.accountStatus === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}
+                            >
+                              <option value="ACTIVE" className="bg-white text-charcoal font-medium">Hoạt động</option>
+                              <option value="INACTIVE" className="bg-white text-charcoal font-medium">Đã khóa</option>
+                            </select>
                           </td>
                           <td className="px-6 py-4 text-right">
                             <button

@@ -2,12 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import { Save, Camera, X, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
-import { updateUserInfo } from '../services/userService';
+import { updateUserInfo, deleteUser } from '../services/userService';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-  const { user, userId, refreshUser } = useAuth();
+  const { user, userId, refreshUser, logout } = useAuth();
 
   const [profileData, setProfileData] = useState({
     fullname: '',
@@ -109,6 +109,26 @@ export default function ProfilePage() {
         'Cập nhật thất bại. Vui lòng thử lại.';
       setStatus({ type: 'error', message: typeof msg === 'string' ? msg : JSON.stringify(msg) });
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản này? Hành động này không thể hoàn tác!')) {
+      return;
+    }
+    
+    setLoading(true);
+    setStatus(null);
+    try {
+      const targetId = user?.id || userId;
+      await deleteUser(targetId);
+      alert('Tài khoản của bạn đã được xóa.');
+      logout();
+      navigate('/login', { replace: true });
+    } catch (err) {
+      console.error(err);
+      setStatus({ type: 'error', message: 'Xóa tài khoản thất bại. Vui lòng thử lại sau.' });
       setLoading(false);
     }
   };
@@ -237,7 +257,15 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <div className="pt-4 flex justify-end">
+        <div className="pt-4 flex justify-between items-center border-t border-cream-border mt-6">
+          <button
+            type="button"
+            disabled={loading}
+            onClick={handleDeleteAccount}
+            className="px-4 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 font-semibold rounded-lg transition-all"
+          >
+            Xóa tài khoản
+          </button>
           <button
             type="submit"
             disabled={loading}

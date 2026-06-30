@@ -1,9 +1,6 @@
 import axios from 'axios';
 import apiClient from './userService';
-// Thay đổi URL này nếu Backend của bạn chạy ở port khác
-const API_URL = 'http://localhost:8080/api/documents'; 
 
-// Hàm lấy toàn bộ tài liệu
 export const getAllDocuments = async () => {
     try {
         const response = await apiClient.get('/api/documents');
@@ -14,12 +11,20 @@ export const getAllDocuments = async () => {
     }
 };
 
-// Hàm Upload tài liệu (Xử lý chuẩn FormData và Blob JSON)
-export const uploadDocument = async (dto, file, onProgress) => { // Thêm tham số onProgress
+export const getDocumentById = async (id) => {
+  try {
+    const response = await apiClient.get(`/api/documents/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error("Lỗi lấy chi tiết tài liệu:", error);
+    throw error;
+  }
+};
+
+export const uploadDocument = async (dto, file, onProgress) => {
   try {
     const formData = new FormData();
 
-    // Đóng gói DTO vào Blob
     formData.append("data", new Blob([JSON.stringify(dto)], {
       type: "application/json"
     }));
@@ -28,13 +33,10 @@ export const uploadDocument = async (dto, file, onProgress) => { // Thêm tham s
       formData.append("file", file);
     }
 
-    // QUAN TRỌNG: Thay axios bằng apiClient để nó mang theo JWT Token!
-    // Xóa cái API_URL cứng đi, dùng đường dẫn tương đối vì apiClient đã có baseURL rồi
     const response = await apiClient.post('/api/documents', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       },
-      // Thêm cái này để thanh Progress Bar chạy thật
       onUploadProgress: (progressEvent) => {
         const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
         if (onProgress) onProgress(percentCompleted);
@@ -48,7 +50,16 @@ export const uploadDocument = async (dto, file, onProgress) => { // Thêm tham s
   }
 };
 
-// Hàm xóa tài liệu (Xóa DB + Xóa file trên Azure)
+export const updateDocument = async (id, request) => {
+  try {
+    const response = await apiClient.patch(`/api/documents/${id}`, request);
+    return response.data;
+  } catch (error) {
+    console.error("Lỗi cập nhật tài liệu:", error);
+    throw error;
+  }
+};
+
 export const deleteDocument = async (id) => {
     try {
         const response = await apiClient.delete(`/api/documents/${id}`);
@@ -59,7 +70,6 @@ export const deleteDocument = async (id) => {
     }
 };
 
-// Hàm gọi API lấy thống kê Dashboard
 export const getDashboardStats = async (userId) => {
   try {
     const response = await apiClient.get(`/api/documents/stats/user/${userId}`);
@@ -70,13 +80,22 @@ export const getDashboardStats = async (userId) => {
   }
 };
 
-// Lấy danh sách tài liệu của User
 export const getUserDocuments = async (userId) => {
   try {
     const response = await apiClient.get(`/api/documents/user/${userId}`);
     return response.data;
   } catch (error) {
     console.error("Lỗi khi lấy danh sách tài liệu:", error);
+    throw error;
+  }
+};
+
+export const processTextToChroma = async (request) => {
+  try {
+    const response = await apiClient.post('/api/chatbot/chroma/process-text', request);
+    return response.data;
+  } catch (error) {
+    console.error("Lỗi khi lưu document thành các chunk (Chroma):", error);
     throw error;
   }
 };

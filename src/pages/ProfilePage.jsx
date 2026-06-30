@@ -114,7 +114,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="max-w-xl mx-auto bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100 relative">
+    <div className="max-w-xl mx-auto bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100 relative page-enter">
       <button
         type="button"
         onClick={() => navigate('/')}
@@ -123,9 +123,9 @@ export default function ProfilePage() {
         <X size={24} />
       </button>
 
-      <div className="bg-primary/10 px-8 py-6 border-b border-primary/20">
+      <div className="bg-primary/10 px-8 py-6 border-b border-cream-border">
         <h2 className="text-2xl font-bold text-primary">Cập nhật hồ sơ</h2>
-        <p className="text-sm text-gray-500 mt-1">Quản lý thông tin cá nhân và tài khoản của bạn</p>
+        <p className="text-sm text-primary/60 mt-1">Quản lý thông tin cá nhân và tài khoản của bạn</p>
       </div>
 
       <form onSubmit={handleUpdate} className="p-8 space-y-6">
@@ -137,7 +137,7 @@ export default function ProfilePage() {
         )}
 
         {/* Khu vực Avatar và Email */}
-        <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+        <div className="flex items-center gap-4 bg-cream p-4 rounded-xl border border-cream-border">
           <div
             onClick={() => fileInputRef.current.click()}
             className="relative w-16 h-16 shrink-0 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm cursor-pointer group"
@@ -161,12 +161,12 @@ export default function ProfilePage() {
           />
 
           <div className="flex-1 w-full">
-            <label className="block text-sm font-medium text-gray-700">Email tài khoản</label>
+            <label className="block text-sm font-medium text-charcoal-2">Email tài khoản</label>
             <input
               type="email"
               readOnly
               value={user?.email || ''}
-              className="mt-1 w-full px-4 py-2 border border-gray-200 rounded-xl bg-gray-100/50 text-gray-600 outline-none cursor-not-allowed"
+              className="mt-1 w-full px-4 py-2.5 border border-cream-border rounded-xl bg-cream text-charcoal-2 outline-none cursor-not-allowed opacity-70"
             />
           </div>
         </div>
@@ -174,35 +174,35 @@ export default function ProfilePage() {
         {/* Các trường thông tin */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Họ và tên</label>
+            <label className="block text-sm font-medium text-charcoal-2">Họ và tên</label>
             <input
               type="text"
               name="fullname"
               required
               value={profileData.fullname}
               onChange={handleChange}
-              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+              className="mt-1 w-full px-4 py-2.5 bg-white/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all shadow-sm"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Ngày sinh</label>
+            <label className="block text-sm font-medium text-charcoal-2">Ngày sinh</label>
             <input
               type="date"
               name="dateOfBirth"
               value={profileData.dateOfBirth}
               onChange={handleChange}
-              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+              className="mt-1 w-full px-4 py-2.5 bg-white/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all shadow-sm"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Giới tính</label>
+            <label className="block text-sm font-medium text-charcoal-2">Giới tính</label>
             <select
               name="sex"
               value={profileData.sex}
               onChange={handleChange}
-              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+              className="mt-1 w-full px-4 py-2.5 bg-white/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all shadow-sm"
             >
               <option value="MALE">Nam</option>
               <option value="FEMALE">Nữ</option>
@@ -212,8 +212,8 @@ export default function ProfilePage() {
           {/* Trạng thái tài khoản (readonly, từ server) */}
           {user?.accountStatus && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">Trạng thái tài khoản</label>
-              <div className="mt-1 w-full px-4 py-2 border border-gray-200 rounded-xl bg-gray-50 text-gray-600 flex items-center gap-2">
+              <label className="block text-sm font-medium text-charcoal-2">Trạng thái tài khoản</label>
+              <div className="mt-1 w-full px-4 py-2.5 border border-cream-border rounded-xl bg-cream text-charcoal-2 flex items-center gap-2">
                 <span
                   className={`w-2 h-2 rounded-full ${user.accountStatus === 'ACTIVE' ? 'bg-green-500' : 'bg-red-500'}`}
                 />
@@ -228,8 +228,8 @@ export default function ProfilePage() {
           <div
             className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium ${
               status.type === 'success'
-                ? 'bg-green-50 text-green-700 border border-green-200'
-                : 'bg-red-50 text-red-700 border border-red-200'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                : 'bg-red-50 text-red-800 border border-red-200'
             }`}
           >
             {status.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}

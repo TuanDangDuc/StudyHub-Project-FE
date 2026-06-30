@@ -3,8 +3,8 @@ import { Folder, File, X, HardDrive, Search, Eye, Upload, Loader2, Download } fr
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 // Import các hàm API thật
-import { getUserDocuments, uploadDocument, getDashboardStats } from '../services/documentService'; 
-
+import { getUserDocuments, uploadDocument, getDashboardStats, processTextToChroma } from '../services/documentService'; 
+import { extractTextFromFile } from '../utils/fileExtractor';
 export default function CloudStoragePage() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -32,13 +32,14 @@ export default function CloudStoragePage() {
 
   // LẤY DỮ LIỆU THẬT TỪ BACKEND
   const fetchStorageData = async () => {
-    if (!userId) return;
+    const targetId = user?.id || userId;
+    if (!targetId) return;
     try {
       setIsLoading(true);
       // Gọi song song 2 API cho nhanh
       const [docsData, statsData] = await Promise.all([
-        getUserDocuments(userId),
-        getDashboardStats(userId)
+        getUserDocuments(targetId),
+        getDashboardStats(targetId)
       ]);
 
       setItems(docsData || []);
@@ -56,12 +57,13 @@ export default function CloudStoragePage() {
 
   useEffect(() => {
     fetchStorageData();
-  }, [userId]);
+  }, [userId, user?.id]);
 
  // UPLOAD FILE THẬT
   const handleUpload = async (e) => {
+    const targetId = user?.id || userId;
     const file = e.target.files[0];
-    if (!file || !userId) return;
+    if (!file || !targetId) return;
 
     setIsUploading(true);
     setUploadProgress(0);
@@ -69,7 +71,7 @@ export default function CloudStoragePage() {
     try {
       // Khai báo DTO giống cấu trúc bên Spring Boot
       const dto = {
-        userId: userId,
+        userId: targetId,
         title: file.name,
         fileName: file.name
       };
@@ -82,6 +84,19 @@ export default function CloudStoragePage() {
       // Tải lên thành công -> Cập nhật lại danh sách ngay lập tức
       setItems((prevItems) => [...prevItems, newDoc]);
       alert("Tải file lên thành công!");
+      
+      try {
+        console.log("Processing text to Chroma from Cloud Storage...");
+        const fileText = await extractTextFromFile(file);
+        const docId = newDoc?.id || newDoc?.data?.id || "00000000-0000-0000-0000-000000000000";
+        await processTextToChroma({
+          documentId: docId,
+          userId: targetId,
+          text: fileText
+        });
+      } catch (chunkError) {
+        console.error("Lỗi khi lưu chunk document:", chunkError);
+      }
       
       // Load lại thanh dung lượng
       fetchStorageData();

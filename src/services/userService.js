@@ -4,41 +4,34 @@ import { isTokenExpired } from '../utils/jwtUtils';
 const PUBLIC_URLS = ['/api/user/login', '/api/user/register', '/api/user/forgot-password', '/api/user/verify-otp', '/api/user/reset-password'];
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
+  baseURL: 'https//api.anhchuno.id.vn',
   headers: { 'Content-Type': 'application/json' },
 });
 
 apiClient.interceptors.request.use((config) => {
-  const isPublic = PUBLIC_URLS.some((url) => config.url?.startsWith(url));
+  const isPublic = PUBLIC_URLS.some((url) => config.url?.includes(url));
 
-  if (!isPublic) {
-    let token = localStorage.getItem('token');
+  let token = localStorage.getItem('token');
+  if (token && token.startsWith('Bearer ')) {
+    token = token.slice(7);
+    localStorage.setItem('token', token);
+  }
 
-    if (!token) {
-      if (window.location.pathname !== '/login') {
-        sessionStorage.setItem('logoutReason', 'expired');
-        window.location.href = '/login';
-      }
-      return Promise.reject(new axios.Cancel('No token'));
+  if (isPublic) {
+    if (config.headers) {
+      delete config.headers['Authorization'];
     }
-
-    // Clean token if it already has Bearer prefix from backend
-    if (token.startsWith('Bearer ')) {
-      token = token.slice(7);
-      localStorage.setItem('token', token); // Update storage with clean token
-    }
-
-    if (isTokenExpired(token)) {
+  } else {
+    if (!token || isTokenExpired(token)) {
       localStorage.removeItem('token');
       localStorage.removeItem('userId');
       if (window.location.pathname !== '/login') {
         sessionStorage.setItem('logoutReason', 'expired');
         window.location.href = '/login';
       }
-      return Promise.reject(new axios.Cancel('Token expired'));
+      return Promise.reject(new axios.Cancel('Token is missing or expired'));
     }
-
-    config.headers.Authorization = `Bearer ${token}`;
+    config.headers['Authorization'] = `Bearer ${token}`;
   }
 
   return config;

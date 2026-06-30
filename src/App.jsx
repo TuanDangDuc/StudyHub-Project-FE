@@ -7,7 +7,6 @@ import ProfilePage from './pages/ProfilePage';
 import DocumentPage from './pages/DocumentPage';
 import CloudStoragePage from './pages/CloudStoragePage';
 import HomePage from './pages/HomePage';
-import ChatPage from './pages/ChatPage';
 import AdminPage from './pages/AdminPage';
 
 function App() {
@@ -30,7 +29,6 @@ function App() {
             <Route index element={<HomePage />} />
             <Route path="documents" element={<DocumentPage />} />
             <Route path="storage" element={<CloudStoragePage />} />
-            <Route path="chat" element={<ChatPage />} />
             <Route
               path="profile"
               element={

@@ -20,6 +20,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback((reason) => {
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
+    localStorage.removeItem('username');
     tokenRef.current = null;
     setToken(null);
     setUserId(null);
@@ -60,6 +61,7 @@ export function AuthProvider({ children }) {
           // Token trong storage đã hết hạn → clear ngay
           localStorage.removeItem('token');
           localStorage.removeItem('userId');
+          localStorage.removeItem('username');
           sessionStorage.setItem('logoutReason', 'expired');
         } else {
           tokenRef.current = savedToken;
@@ -68,21 +70,27 @@ export function AuthProvider({ children }) {
             setUserId(savedUserId);
           }
           try {
-            const userInfo = await getUserInfo(savedUserId);
-            if (!cancelled) setUser(userInfo);
+            const savedUsername = localStorage.getItem('username');
+            const userInfo = await getUserInfo(savedUsername || savedUserId);
+            if (!cancelled) {
+              setUser(userInfo);
+
+              if (userInfo?.id && userInfo.id !== savedUserId) {
+                localStorage.setItem('userId', userInfo.id);
+                setUserId(userInfo.id);
+              }
+            }
           } catch (error) {
-            // Chỉ xóa token nếu lỗi là 401 Unauthorized
             if (error.response?.status === 401) {
               localStorage.removeItem('token');
               localStorage.removeItem('userId');
+              localStorage.removeItem('username');
               tokenRef.current = null;
               if (!cancelled) {
                 setToken(null);
                 setUserId(null);
               }
             } else {
-              // Bỏ qua lỗi khác (VD: 400 Bad Request do sai định dạng ID)
-              // Cho phép giữ trạng thái đăng nhập
               if (!cancelled) setUser({ fullname: savedUserId || 'Người dùng' });
             }
           }
@@ -97,9 +105,10 @@ export function AuthProvider({ children }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Login success ──
-  const loginSuccess = useCallback(async (jwtToken, uid) => {
+  const loginSuccess = useCallback(async (jwtToken, uid, username) => {
     localStorage.setItem('token', jwtToken);
     if (uid) localStorage.setItem('userId', uid);
+    if (username) localStorage.setItem('username', username);
 
     tokenRef.current = jwtToken;
     setToken(jwtToken);
@@ -118,23 +127,30 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      if (uid) {
-        const userInfo = await getUserInfo(uid);
+      const savedUsername = username || localStorage.getItem('username');
+      if (uid || savedUsername) {
+        const userInfo = await getUserInfo(savedUsername || uid);
         setUser(userInfo);
+
+        if (userInfo?.id && userInfo.id !== uid) {
+          localStorage.setItem('userId', userInfo.id);
+          setUserId(userInfo.id);
+        }
       } else {
         setUser({ fullname: 'Người dùng' });
       }
     } catch {
-      setUser({ fullname: uid || 'Người dùng' }); // Fallback if getUserInfo fails
+      setUser({ fullname: uid || 'Người dùng' });
     }
   }, []);
 
   // ── Refresh user info (sau khi update profile) ──
   const refreshUser = useCallback(async () => {
     const uid = localStorage.getItem('userId');
-    if (!uid) return;
+    const username = localStorage.getItem('username');
+    if (!uid && !username) return;
     try {
-      const userInfo = await getUserInfo(uid);
+      const userInfo = await getUserInfo(username || uid);
       setUser(userInfo);
     } catch {
       // ignore

@@ -1,15 +1,54 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 @layer base {
+  body {
+    background-color: #F0EBE0;
+    color: #1A1A1A;
+  }
+
   button:not(:disabled), 
   [role="button"]:not(:disabled),
   a:not([disabled]) {
     cursor: pointer !important;
   }
 }
+
 /* Ép buộc ẩn con mắt mặc định của Microsoft Edge */
 input::-ms-reveal,
 input::-ms-clear {
   display: none !important;
+}
+
+@layer utilities {
+  /* Stagger delay helpers for list animations */
+  .stagger-1  { animation-delay: 60ms; }
+  .stagger-2  { animation-delay: 120ms; }
+  .stagger-3  { animation-delay: 180ms; }
+  .stagger-4  { animation-delay: 240ms; }
+  .stagger-5  { animation-delay: 300ms; }
+  .stagger-6  { animation-delay: 360ms; }
+
+  /* Card hover micro-lift */
+  .hover-lift {
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .hover-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px -8px rgba(200, 75, 49, 0.15);
+  }
+
+  /* Shimmer skeleton */
+  .skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+
+  /* Smooth page entry */
+  .page-enter {
+    animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
 }

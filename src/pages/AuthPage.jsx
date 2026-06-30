@@ -127,7 +127,7 @@ export default function AuthPage() {
           uid = formData.username; // Fallback an toàn nếu token không phải dạng JWT chuẩn
         }
 
-        await loginSuccess(token, uid);
+        await loginSuccess(token, uid, formData.username);
         // Quay lại trang gốc nếu bị redirect từ PrivateRoute
         navigate(fromPath, { replace: true });
       }

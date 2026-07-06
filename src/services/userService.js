@@ -4,7 +4,7 @@ import { isTokenExpired } from '../utils/jwtUtils';
 const PUBLIC_URLS = ['/api/user/login', '/api/user/register', '/api/user/forgot-password', '/api/user/verify-otp', '/api/user/reset-password'];
 
 const apiClient = axios.create({
-  baseURL: 'https://api.anhchuno.id.vn',
+  baseURL: import.meta.env.VITE_API_URL,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -31,7 +31,7 @@ apiClient.interceptors.request.use((config) => {
       }
       return Promise.reject(new axios.Cancel('Token is missing or expired'));
     }
-    config.headers['Authorization'] = `Bearer ${token}`;
+    config.headers.set('Authorization', `Bearer ${token}`);
   }
 
   return config;

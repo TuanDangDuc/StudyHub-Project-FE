@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Cloud, MessageSquare, Clock, ArrowRight, Loader2 } from 'lucide-react';
+import { BookOpen, Cloud, MessageSquare, Clock, ArrowRight, Loader2, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
-import { getDashboardStats } from '../services/documentService';
+import { getDashboardStats, getDocumentsByUserId } from '../services/documentService';
 import { getChatSessionsByUser } from '../services/chatService';
 
 export default function HomePage() {
@@ -14,6 +14,23 @@ export default function HomePage() {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Hàm tính toán khoảng thời gian (VD: "2 giờ trước", "Vừa xong")
+  const timeAgo = (dateInput) => {
+    if (!dateInput) return "Gần đây";
+    const date = new Date(dateInput);
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+    
+    if (seconds < 60) return "Vừa xong";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} phút trước`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} giờ trước`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days} ngày trước`;
+    return date.toLocaleDateString('vi-VN');
+  };
+
   useEffect(() => {
     let isMounted = true;
     if (authLoading) return;
@@ -23,15 +40,45 @@ export default function HomePage() {
       if (!targetId) { if (isMounted) setLoading(false); return; }
       try {
         setLoading(true);
-        const statsData = await getDashboardStats(targetId);
-        const chatSessions = await getChatSessionsByUser(targetId);
+        // Gọi đồng thời 3 API: Thống kê chung, Lịch sử Chat, và Danh sách File
+        const [statsData, chatSessions, userDocs] = await Promise.all([
+           getDashboardStats(targetId),
+           getChatSessionsByUser(targetId),
+           getDocumentsByUserId(targetId)
+        ]);
+
         if (isMounted) {
           setDocCount(statsData.totalDocuments || 0);
           setStorageSize(statsData.storageSize || '0 MB');
           setAiSessions(Array.isArray(chatSessions) ? chatSessions.length : 0);
-          setActivities([
-            { id: 1, type: 'document', message: 'Hệ thống đã kết nối dữ liệu thành công', time: 'Vừa xong', color: 'bg-primary' }
-          ]);
+
+          // Xử lý dữ liệu Hoạt động gần đây từ danh sách file
+          let recentActivities = [];
+          if (Array.isArray(userDocs) || (userDocs && userDocs.data)) {
+            const docsList = Array.isArray(userDocs) ? userDocs : userDocs.data;
+            
+            // Lọc ra các file có thời gian upload hợp lệ, sắp xếp mới nhất lên đầu, lấy 5 file
+            recentActivities = docsList
+              .filter(doc => doc.uploadAt) // Đảm bảo có ngày tháng
+              .sort((a, b) => new Date(b.uploadAt) - new Date(a.uploadAt))
+              .slice(0, 5)
+              .map((doc, index) => ({
+                id: doc.id || index,
+                type: 'document',
+                message: `Bạn vừa tải lên tài liệu: <b>${doc.fileName || doc.title}</b>`,
+                time: timeAgo(doc.uploadAt),
+                color: 'bg-primary'
+              }));
+          }
+
+          // Nếu chưa có file nào, hiển thị thông báo mặc định
+          if (recentActivities.length === 0) {
+            recentActivities = [
+              { id: 1, type: 'system', message: 'Hệ thống đã kết nối dữ liệu thành công', time: 'Vừa xong', color: 'bg-emerald-500' }
+            ];
+          }
+
+          setActivities(recentActivities);
         }
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu dashboard:", error);
@@ -60,7 +107,7 @@ export default function HomePage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto page-enter">
-      {/* Hero banner — charcoal on cream, orange accent stripe */}
+      {/* Hero banner */}
       <div className="bg-cream-card border border-cream-border rounded-3xl p-8 mb-8 relative overflow-hidden animate-fade-in-up shadow-sm">
         <div className="absolute top-0 left-0 w-1.5 h-full bg-primary rounded-l-3xl" />
         <div className="relative z-10 pl-4">
@@ -108,12 +155,18 @@ export default function HomePage() {
         {activities.length > 0 ? (
           <div className="space-y-4">
             {activities.map((activity) => (
-              <div key={activity.id} className="flex items-center justify-between py-3 border-b border-cream-border last:border-0">
+              <div key={activity.id} className="flex items-center justify-between py-3 border-b border-cream-border last:border-0 hover:bg-cream-border/20 transition-colors px-2 rounded-lg -mx-2">
                 <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${activity.color}`} />
-                  <p className="text-sm text-charcoal-2" dangerouslySetInnerHTML={{ __html: activity.message }} />
+                  {activity.type === 'document' ? (
+                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                       <FileText size={16} className="text-primary" />
+                     </div>
+                  ) : (
+                     <div className={`w-2 h-2 rounded-full ${activity.color} shrink-0 ml-3`} />
+                  )}
+                  <p className="text-sm text-charcoal-2 truncate max-w-[200px] sm:max-w-[400px] md:max-w-[600px]" dangerouslySetInnerHTML={{ __html: activity.message }} title={activity.message.replace(/<[^>]+>/g, '')} />
                 </div>
-                <span className="text-xs text-charcoal-3">{activity.time}</span>
+                <span className="text-xs text-charcoal-3 font-medium shrink-0 ml-4 bg-cream px-2 py-1 rounded-md">{activity.time}</span>
               </div>
             ))}
           </div>

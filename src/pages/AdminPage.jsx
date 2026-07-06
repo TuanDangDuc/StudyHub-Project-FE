@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getAllUsers, deleteUser, changeUserRole, changeUserStatus } from '../services/userService';
-import { getAllDocuments, deleteDocument } from '../services/documentService'; // CHÚ Ý: Đảm bảo bạn đã export 2 hàm này trong documentService
+import { getAllDocuments, deleteDocument } from '../services/documentService';
 import { useAuth } from '../context/useAuth';
 
 export default function AdminPage() {
@@ -114,23 +114,33 @@ export default function AdminPage() {
     navigate('/login');
   };
 
+  // =========================================================================
+  // ĐÂY LÀ PHẦN LOGIC ĐÃ FIX: Ghép nối (Join) tên User vào từng Document
+  // =========================================================================
+  const enrichedDocuments = documents.map(doc => {
+    // Tìm user có id trùng với userId trong document
+    const docUser = users.find(u => u.id === doc.userId);
+    return { ...doc, user: docUser }; 
+  });
+
   // ── Lọc dữ liệu theo Search ──
   const filteredUsers = users.filter((u) =>
     (u.fullname || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredStorageDocs = documents.filter((d) =>
+  const filteredStorageDocs = enrichedDocuments.filter((d) =>
     (d.fileName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (d.user?.fullname || 'Unknown').toLowerCase().includes(searchTerm.toLowerCase())
+    (d.user?.fullname || 'Ẩn danh').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // ── Thống kê Document theo User ──
   const userDocumentStats = users.map((user) => {
-    const userDocs = documents.filter((d) => d.user?.id === user.id);
+    // Tìm các tài liệu thuộc về user này
+    const userDocs = enrichedDocuments.filter((d) => d.userId === user.id);
     const totalDownloads = userDocs.reduce((sum, doc) => sum + (doc.downloadCount || 0), 0);
     return { ...user, totalFiles: userDocs.length, totalDownloads };
-  }).filter((u) => u.totalFiles > 0);
+  }).filter((u) => u.totalFiles > 0); // Chỉ hiển thị những user có tải file lên
 
   const filteredUserStats = userDocumentStats.filter((u) =>
     (u.fullname || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -138,7 +148,7 @@ export default function AdminPage() {
   );
 
   const userSpecificDocs = selectedUser
-    ? documents.filter((d) => d.user?.id === selectedUser.id)
+    ? enrichedDocuments.filter((d) => d.userId === selectedUser.id)
     : [];
 
   // ── Tính toán dung lượng thật ──
@@ -227,7 +237,7 @@ export default function AdminPage() {
             {[
               { key: 'users', icon: <Users size={18} />, label: 'Danh sách Người dùng' },
               { key: 'documents', icon: <FolderOpen size={18} />, label: 'Quản lý Tài liệu' },
-              { key: 'storage', icon: <HardDrive size={18} />, label: 'Quản lý Azure Storage' }, // Đã đổi tên thành Azure
+              { key: 'storage', icon: <HardDrive size={18} />, label: 'Quản lý Azure Storage' }, 
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -517,7 +527,7 @@ export default function AdminPage() {
                         <button 
                           onClick={() => {
                              handleDeleteDocument(doc.id);
-                             setSelectedUser(null); // Đóng modal khi xóa
+                             setSelectedUser(null); 
                           }} 
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Xóa tài liệu"><Trash2 size={16} />
                         </button>

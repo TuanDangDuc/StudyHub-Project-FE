@@ -50,12 +50,12 @@ export const uploadDocument = async (dto, file, onProgress) => {
   }
 };
 
-export const updateDocument = async (id, request) => {
+export const updateDocument = async (id, data) => {
   try {
-    const response = await apiClient.patch(`/api/documents/${id}`, request);
+    const response = await apiClient.patch(`/api/documents/${id}`, data);
     return response.data;
   } catch (error) {
-    console.error("Lỗi cập nhật tài liệu:", error);
+    console.error("Lỗi khi cập nhật tài liệu:", error);
     throw error;
   }
 };
@@ -97,5 +97,24 @@ export const processTextToChroma = async (request) => {
   } catch (error) {
     console.error("Lỗi khi lưu document thành các chunk (Chroma):", error);
     throw error;
+  }
+};
+
+export const getDocumentsByUserId = async (userId) => {
+  try {
+    const response = await apiClient.get(`/api/documents/user/${userId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách tài liệu của user:", error);
+    throw error;
+  }
+};
+
+// ĐÃ FIX: Dùng apiClient để mang theo Token và sửa lại đường dẫn chuẩn
+export const incrementDownloadCount = async (id) => {
+  try {
+    await apiClient.post(`/api/documents/${id}/download`); 
+  } catch (error) {
+    console.error("Lỗi khi đếm lượt tải:", error);
   }
 };

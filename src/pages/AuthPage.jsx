@@ -114,30 +114,47 @@ export default function AuthPage() {
 
     try {
       if (view === 'login') {
-        // POST /api/user/login → 202 + token string
+        // GỌI API LOGIN
         const rawToken = await login({ username: formData.username, password: formData.password });
-        const token = rawToken.startsWith('Bearer ') ? rawToken.slice(7) : rawToken;
+        
+        // TRÍCH XUẤT TOKEN AN TOÀN (Bao quát cả 2 trường hợp trả về String hoặc Object)
+        let tokenStr = "";
+        if (typeof rawToken === 'string') {
+             tokenStr = rawToken;
+        } else if (rawToken && typeof rawToken === 'object') {
+             // Thử lấy token từ các trường phổ biến mà backend hay trả về
+             tokenStr = rawToken.token || rawToken.accessToken || rawToken.data || "";
+        }
 
-        // Decode userId từ JWT payload (sub field)
+        if (!tokenStr) {
+             console.error("Dữ liệu backend trả về không chứa token:", rawToken);
+             throw new Error("Không lấy được token từ máy chủ.");
+        }
+
+        const token = tokenStr.startsWith('Bearer ') ? tokenStr.slice(7) : tokenStr;
+
+        // DECODE TOKEN ĐỂ LẤY USER_ID
         let uid = null;
         try {
           const payload = JSON.parse(atob(token.split('.')[1]));
           uid = payload.sub || payload.userId || payload.id || formData.username;
-        } catch {
-          uid = formData.username; // Fallback an toàn nếu token không phải dạng JWT chuẩn
+        } catch (e) {
+          console.warn("Không thể giải mã token:", e);
+          uid = formData.username; 
         }
 
+        // LƯU TOKEN VÀ LẤY THÔNG TIN USER
         const userInfo = await loginSuccess(token, uid, formData.username);
         
-        // Chuyển hướng theo role
+        // KIỂM TRA QUYỀN ĐỂ CHUYỂN HƯỚNG
         const roleName = typeof userInfo?.role === 'string' ? userInfo.role : (userInfo?.role?.authority || 'USER');
-        const displayRole = roleName.replace('ROLE_', '');
+        const displayRole = roleName.replace('ROLE_', '').toUpperCase(); // Đảm bảo luôn in hoa
+
+        console.log("Quyền của User đăng nhập:", displayRole);
 
         if (displayRole === 'ADMIN') {
           navigate('/admin', { replace: true });
         } else {
-          // Quay lại trang gốc nếu bị redirect từ PrivateRoute
-          // Nếu fromPath là /admin nhưng user không phải ADMIN, đổi thành /
           const targetPath = fromPath === '/admin' ? '/' : fromPath;
           navigate(targetPath, { replace: true });
         }
@@ -174,6 +191,7 @@ export default function AuthPage() {
         setView('success');
       }
     } catch (err) {
+      console.error("=== CHI TIẾT LỖI ĐĂNG NHẬP ===", err);
       let msg =
         err.response?.data?.message ||
         err.response?.data ||

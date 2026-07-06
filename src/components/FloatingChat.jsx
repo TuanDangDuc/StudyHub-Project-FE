@@ -442,7 +442,7 @@ export default function FloatingChat() {
               {/* Ô nhập tin nhắn */}
               <div className="p-3 bg-white border-t border-cream-border relative">
                 {showDocMenu && (
-                  <div className="absolute bottom-full left-3 mb-2 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden origin-bottom-left animate-fade-in-up">
+                  <div className="absolute bottom-full left-3 right-3 mb-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden origin-bottom-left animate-fade-in-up">
                     <div className="p-2 bg-cream-card border-b border-cream-border text-xs font-semibold text-charcoal-3 uppercase">
                       Chọn tài liệu
                     </div>
@@ -456,9 +456,9 @@ export default function FloatingChat() {
                               setSelectedDocumentId(doc.id);
                               setShowDocMenu(false);
                             }}
-                            className={`w-full text-left px-3 py-2 text-sm hover:bg-primary/10 transition-colors ${selectedDocumentId === doc.id ? 'bg-primary/10 text-primary font-medium' : 'text-charcoal-2'}`}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-primary/10 transition-colors border-b border-gray-50 last:border-0 ${selectedDocumentId === doc.id ? 'bg-primary/10 text-primary font-medium' : 'text-charcoal-2'}`}
                           >
-                            <span className="truncate block">{doc.title || doc.fileName || doc.name}</span>
+                            <span className="block break-words leading-snug">{doc.title || doc.fileName || doc.name}</span>
                           </button>
                         ))
                       ) : (

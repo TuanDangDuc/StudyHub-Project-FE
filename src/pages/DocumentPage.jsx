@@ -65,7 +65,7 @@ function PdfViewer({ url }) {
       try {
         const pdfjsLib = await import('pdfjs-dist');
         // Worker đã được copy vào public/ — Vite serve nó như static asset
-        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
         const pdf = await pdfjsLib.getDocument({ url }).promise;
         if (cancelled) return;

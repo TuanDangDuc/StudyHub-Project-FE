@@ -381,22 +381,9 @@ export default function DocumentPage() {
         setUploadProgress(percent);
       });
 
-      setUploadStatus('processing');
-      setUploadProgress(100);
-
-      try {
-        const fileText = await extractTextFromFile(uploadFile);
-        const docId = uploadedDoc?.id || uploadedDoc?.data?.id || "00000000-0000-0000-0000-000000000000";
-        await processTextToChroma({
-          documentId: docId,
-          userId: targetId,
-          text: fileText
-        });
-      } catch (chunkError) {
-        console.error("Lỗi khi lưu chunk document:", chunkError);
-      }
-
+      // ✅ Upload xong: đóng modal ngay, không đợi embedding
       setUploadStatus('done');
+      setUploadProgress(100);
       await fetchData();
 
       setTimeout(() => {
@@ -406,7 +393,25 @@ export default function DocumentPage() {
         setUploadProgress(0);
         setUploadStatus('idle');
         resetDrag();
-      }, 1200);
+      }, 800);
+
+      // ✅ Embedding chạy ngầm (fire-and-forget)
+      const fileSnapshot = uploadFile;
+      const docId = uploadedDoc?.id || uploadedDoc?.data?.id || "00000000-0000-0000-0000-000000000000";
+      (async () => {
+        try {
+          const fileText = await extractTextFromFile(fileSnapshot);
+          console.log(`[Embedding] Đã trích xuất ${fileText?.length ?? 0} ký tự từ: ${fileSnapshot.name}`);
+          if (!fileText || fileText.trim().length === 0) {
+            console.warn('[Embedding] Không có text để nhúng:', fileSnapshot.name);
+            return;
+          }
+          await processTextToChroma({ documentId: docId, userId: targetId, text: fileText });
+          console.log('[Embedding] Hoàn thành nhúng:', fileSnapshot.name);
+        } catch (err) {
+          console.error('[Embedding] Lỗi khi nhúng tài liệu:', err);
+        }
+      })();
 
     } catch (error) {
       setUploadStatus('error');
@@ -731,8 +736,7 @@ export default function DocumentPage() {
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm font-medium text-charcoal">
                     {uploadStatus === 'uploading' && 'Đang tải file lên máy chủ...'}
-                    {uploadStatus === 'processing' && 'Đang xử lý và lưu trữ tài liệu...'}
-                    {uploadStatus === 'done' && 'Tải lên thành công!'}
+                    {uploadStatus === 'done' && 'Tải lên thành công! AI đang xử lý ngầm ✨'}
                     {uploadStatus === 'error' && 'Có lỗi xảy ra, vui lòng thử lại.'}
                   </span>
                   <span className="text-sm font-bold text-primary">{uploadProgress}%</span>
@@ -765,7 +769,7 @@ export default function DocumentPage() {
               <button
                 type="button"
                 onClick={() => { setShowUploadModal(false); setUploadFile(null); setUploadSubjectId(''); setUploadProgress(0); setUploadStatus('idle'); resetDrag(); }}
-                disabled={uploadStatus === 'uploading' || uploadStatus === 'processing'}
+                disabled={uploadStatus === 'uploading'}
                 className="px-6 py-2.5 text-charcoal-2 font-medium bg-cream-border hover:bg-cream-border/70 rounded-xl transition-colors disabled:opacity-40"
               >
                 Hủy
@@ -775,7 +779,7 @@ export default function DocumentPage() {
                 disabled={uploadStatus !== 'idle' && uploadStatus !== 'error'}
                 className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-semibold rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/30 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {uploadStatus === 'uploading' || uploadStatus === 'processing' ? (
+                {uploadStatus === 'uploading' ? (
                   <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span> Đang tải...</>
                 ) : (
                   <><Upload size={18} /> Tải lên</>
